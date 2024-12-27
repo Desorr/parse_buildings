@@ -1,9 +1,14 @@
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import json
 import time
+
+EMAIL = ""
+PASSWORD = ""
 
 class BuildingsReport:
     def __init__(self, driver):
@@ -23,11 +28,66 @@ class BuildingsReport:
             return self.data[0].get("Title")
         return None
 
+    # Проверка на авторизацию
+    def check_and_login(self):
+        try:
+            login_button = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[@id='divUserStt']/a[@id='kct_login' and contains(@class, 're__btn-se-border--md')]"))
+            )
+            # Если кнопка найдена, значит нужно авторизоваться
+            if login_button.is_displayed():
+                login_button.click()
+                time.sleep(15)
+
+                try:
+                    self.driver.switch_to.active_element.send_keys(Keys.TAB)
+                    time.sleep(1)
+
+                    # Ввод password
+                    self.driver.switch_to.active_element.send_keys(PASSWORD)
+                    time.sleep(2)
+                    self.driver.switch_to.active_element.send_keys(Keys.SHIFT + Keys.TAB)
+                    time.sleep(1)
+
+                    # Ввод email
+                    self.driver.switch_to.active_element.send_keys(EMAIL)
+                    time.sleep(2)
+                    
+                    # Подтвердить авторизацию
+                    self.driver.switch_to.active_element.send_keys(Keys.ENTER)
+                    time.sleep(10)
+
+                    # Закрыть всплывающее окно
+                    self.driver.switch_to.active_element.send_keys(Keys.TAB)
+                    time.sleep(2)
+                    self.driver.switch_to.active_element.send_keys(Keys.ENTER)
+
+                    time.sleep(10)
+                    return True
+
+                except Exception as e:
+                    print(f"Ошибка при логине: {e}")
+                    return False
+                    
+            else:
+                print("Пользователь уже авторизован, продолжаю выполнение.")
+                return True
+            
+        except Exception as e:
+            print("Пользователь уже авторизован или кнопка 'Войти' не найдена.")
+            return True
+
     def scrape_listings(self):
         self.driver.get("https://batdongsan.com.vn/nha-dat-cho-thue")
+        
+        while not self.check_and_login():
+            print("Не удалось авторизоваться. Повторная попытка...")
+        
         first_existing_title = self.get_first_title_from_data()
-
-        while True:
+        max_pages = self.get_max_pages()
+        current_page = 1
+        
+        while current_page <= max_pages:
             try:
                 listings = self.get_listings()
                 for listing_url in listings:
@@ -49,7 +109,8 @@ class BuildingsReport:
                     self.driver.back()
 
                 # Переход на следующую страницу
-                if not self.go_to_next_page():
+                current_page += 1
+                if not self.go_to_next_page(current_page):
                     break
 
             except Exception as e:
@@ -69,33 +130,24 @@ class BuildingsReport:
             print("Ссылки на дома не найдены.")
             return []
 
-    def go_to_next_page(self):
+    def get_max_pages(self):
         try:
-            # Ищем элемент со ссылкой на следующую страницу
-            next_button = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '.re__pagination-group a.re__pagination-icon:last-child'))
-            )
-            print(next_button)
-            # Получаем значение атрибута href
-            next_page_url = next_button.get_attribute('href')
-
-            if next_page_url:
-                base_url = "https://batdongsan.com.vn"
-                if not next_page_url.startswith("http"):
-                    next_page_url = base_url + next_page_url
-                
-                # Переход на следующую страницу
-                self.driver.get(next_page_url)
-                time.sleep(2)
-                return True
-            else:
-                print("Ссылка на следующую страницу отсутствует.")
-                return False
-        except TimeoutException:
-            print("Следующая страница недоступна.")
-            return False
+            pagination_numbers = self.driver.find_elements(By.CSS_SELECTOR, ".re__pagination-group a.re__pagination-number")
+            max_page = max(int(el.get_attribute("pid")) for el in pagination_numbers)
+            return max_page
         except Exception as e:
-            print(f"Ошибка при переходе на следующую страницу: {e}")
+            print(f"Ошибка при определении максимального числа страниц: {e}")
+            return 1
+    
+    # Переход на следующую страницу
+    def go_to_next_page(self, page_number):
+        try:
+            next_page_url = f"https://batdongsan.com.vn/nha-dat-cho-thue/p{page_number}"
+            self.driver.get(next_page_url)
+            time.sleep(2)
+            return True
+        except Exception as e:
+            print(f"Ошибка при переходе на страницу {page_number}: {e}")
             return False
 
     def extract_building_data(self):
@@ -302,8 +354,22 @@ class BuildingsReport:
         return None
 
     def get_phone_number(self):
-        return None
+        try:
+            phone_under_button = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 're__btn') and contains(@class, 'js__phone-event')]"))
+            )
+            phone_under_button.click()
+            time.sleep(5)
+            
+            phone_number_div = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 're__btn') and contains(@class, 'js__phone-event') and contains(@class, 'showHotline')]"))
+            )
+            phone_number = phone_number_div.get_attribute("mobile")
 
+        except:
+            phone_number = None
+        return phone_number
+    
     def get_contract_term(self):
         return None
 
