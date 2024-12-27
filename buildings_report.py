@@ -37,7 +37,7 @@ class BuildingsReport:
             # Если кнопка найдена, значит нужно авторизоваться
             if login_button.is_displayed():
                 login_button.click()
-                time.sleep(15)
+                time.sleep(30)
 
                 try:
                     self.driver.switch_to.active_element.send_keys(Keys.TAB)
@@ -55,14 +55,14 @@ class BuildingsReport:
                     
                     # Подтвердить авторизацию
                     self.driver.switch_to.active_element.send_keys(Keys.ENTER)
-                    time.sleep(10)
+                    time.sleep(20)
 
                     # Закрыть всплывающее окно
                     self.driver.switch_to.active_element.send_keys(Keys.TAB)
                     time.sleep(2)
                     self.driver.switch_to.active_element.send_keys(Keys.ENTER)
 
-                    time.sleep(10)
+                    time.sleep(20)
                     return True
 
                 except Exception as e:
