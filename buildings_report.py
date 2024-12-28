@@ -226,7 +226,15 @@ class BuildingsReport:
         return None
 
     def get_size(self):
-        return None
+        try:
+            size_el = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 're__pr-short-info-item') and contains(@class, 'js__pr-short-info-item')]//span[text()='Diện tích']/.."))
+            )
+            size_element = size_el.find_element(By.XPATH, ".//span[@class='value']")
+            size = size_element.text
+        except:
+            size = None
+        return size
 
     def get_type(self):
         return "House"
@@ -235,10 +243,30 @@ class BuildingsReport:
         return None
 
     def get_other(self):
-        return None
+        result = {}
+        try:
+            container = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[@class='re__pr-specs-content js__other-info']"))
+            )
+            
+            items = container.find_elements(By.XPATH, ".//div[contains(@class, 're__pr-specs-content-item')]")
+
+            for item in items:
+                try:
+                    title = item.find_element(By.XPATH, ".//span[contains(@class, 're__pr-specs-content-item-title')]").text
+                    value = item.find_element(By.XPATH, ".//span[contains(@class, 're__pr-specs-content-item-value')]").text
+
+                    result[title] = value
+                except Exception as e:
+                    print(f"Error processing item: {e}")
+
+        except Exception as e:
+            print(f"Error finding container: {e}")
+
+        return result
 
     def get_rooms(self):
-        return None
+        return self.get_bedrooms()
 
     def get_title(self):
         try:
@@ -297,7 +325,15 @@ class BuildingsReport:
         return None
 
     def get_bedrooms(self):
-        return None
+        try:
+            bedrooms_el = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 're__pr-short-info-item') and contains(@class, 'js__pr-short-info-item')]//span[text()='Phòng ngủ']/.."))
+            )
+            bedrooms_element = bedrooms_el.find_element(By.XPATH, ".//span[@class='value']")
+            bedrooms = bedrooms_element.text
+        except:
+            bedrooms = None
+        return bedrooms
     
     def get_currency(self):
         return "VND"
@@ -324,7 +360,35 @@ class BuildingsReport:
         return None
 
     def get_coordinates(self):
-        return None
+        time.sleep(15)
+        try:
+            map_section = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((
+                    By.XPATH,
+                    "//div[@class='re__section re__pr-map js__section js__li-other']"
+                ))
+            )     
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", map_section)
+            time.sleep(3)
+            self.driver.execute_script("window.scrollBy(0, -100);")
+            time.sleep(3)
+
+            specific_section_div = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 're__section re__pr-map js__section js__li-other')]"))
+            )
+
+            section_body_div = specific_section_div.find_element(By.CLASS_NAME, "re__section-body")
+
+            iframe = section_body_div.find_element(By.XPATH, ".//iframe[contains(@class, 'lazyloaded')]")
+
+            data_src = iframe.get_attribute("data-src")
+
+            coordinates = data_src.split("q=")[1].split("&")[0]
+
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            coordinates = None
+        return coordinates
 
     def get_description(self):
         try:
