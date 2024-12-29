@@ -289,7 +289,7 @@ class BuildingsReport:
         return image_urls
     
     def get_source(self):
-        return None
+        return "batdongsan.com.vn"
 
     def get_videos(self):
         return None
@@ -330,7 +330,7 @@ class BuildingsReport:
                 EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 're__pr-short-info-item') and contains(@class, 'js__pr-short-info-item')]//span[text()='Phòng ngủ']/.."))
             )
             bedrooms_element = bedrooms_el.find_element(By.XPATH, ".//span[@class='value']")
-            bedrooms = bedrooms_element.text
+            bedrooms = bedrooms_element.text.split()[0]
         except:
             bedrooms = None
         return bedrooms
